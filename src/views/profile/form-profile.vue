@@ -1,11 +1,12 @@
 <script setup>
-  import { ref, computed } from 'vue';
+  import { ref, computed, watch } from 'vue';
   import { storeToRefs } from 'pinia';
   import { useAuthStore } from '@/stores';
+  import * as L from 'leaflet';
+  import 'leaflet/dist/leaflet.css';
 
   const authStore = useAuthStore();
   const { user } = storeToRefs(authStore);
-  console.log(user, 'userrr');
 
   // Form state
   const isEditing = ref(false);
@@ -35,6 +36,12 @@
     const name = formData.value.name?.charAt(0) || '';
     return name.toUpperCase();
   });
+
+  // Map setup
+  const mapContainer = ref(null);
+  const map = ref(null);
+  const marker = ref(null);
+  const selectedLocation = ref({ lat: -6.9175, lng: 107.6191 }); // Default: Sukabumi
 
   // Handle file selection
   const handleFileSelect = (event) => {
@@ -100,6 +107,65 @@
     alert('Profile updated successfully!');
   };
 
+  // Initialize map
+  function initMap() {
+    if (mapContainer.value && !map.value) {
+      map.value = L.map(mapContainer.value).setView(
+        [selectedLocation.value.lat, selectedLocation.value.lng],
+        13
+      );
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(map.value);
+
+      marker.value = L.marker(
+        [selectedLocation.value.lat, selectedLocation.value.lng],
+        {
+          draggable: true,
+        }
+      ).addTo(map.value);
+
+      // Update location when marker is dragged
+      marker.value.on('dragend', function (e) {
+        const position = e.target.getLatLng();
+        selectedLocation.value = { lat: position.lat, lng: position.lng };
+      });
+
+      // Add click event to map
+      // map.value.on('click', function (e) {
+      //   selectedLocation.value = { lat: e.latlng.lat, lng: e.latlng.lng };
+      //   marker.value.setLatLng(e.latlng);
+      // });
+    }
+  }
+
+  // Watch for user data in edit mode
+  watch(
+    () => user?.value,
+    (newUser) => {
+      if (newUser) {
+        if (newUser.loclat || newUser.loclng) {
+          let location = { lat: newUser.loclat, lng: newUser.loclng };
+          selectedLocation.value = location;
+          if (map.value && marker.value) {
+            map.value.setView([newUser.loclat, newUser.loclng], 13);
+            marker.value.setLatLng([newUser.loclat, newUser.loclng]);
+          }
+        }
+      }
+    },
+    { immediate: true }
+  );
+
+  // Initialize map after component mount
+  watch(mapContainer, (val) => {
+    if (val && !map.value) {
+      initMap();
+    }
+  });
+
   // Change password
   const changePassword = () => {
     if (passwordData.value.newPassword !== passwordData.value.confirmPassword) {
@@ -111,8 +177,6 @@
       alert('Password must be at least 6 characters long!');
       return;
     }
-
-    console.log('Changing password');
 
     passwordData.value = {
       currentPassword: '',
@@ -146,8 +210,8 @@
               <div class="avatar-container">
                 <div class="avatar">
                   <img
-                    v-if="previewImage || profileImage"
-                    :src="previewImage || profileImage"
+                    v-if="authStore.user.profile"
+                    :src="authStore.user.profile"
                     alt="Profile"
                   />
                   <span v-else class="avatar-initials">{{ initials }}</span>
@@ -221,7 +285,7 @@
               </div>
 
               <!-- Edit/Save Button -->
-              <div class="action-buttons">
+              <!-- <div class="action-buttons">
                 <button
                   v-if="!isEditing"
                   @click="toggleEdit"
@@ -266,7 +330,7 @@
                     <span>Save Changes</span>
                   </button>
                 </div>
-              </div>
+              </div> -->
             </div>
           </div>
 
@@ -315,18 +379,17 @@
                 class="form-input"
               />
             </div>
-
-            <!-- Bio (Full Width) -->
-            <div class="form-group form-group-full">
-              <label>Bio</label>
-              <textarea
-                v-model="formData.bio"
-                :disabled="!isEditing"
-                rows="4"
-                placeholder="Tell us about yourself..."
-                class="form-textarea"
-              ></textarea>
-            </div>
+          </div>
+          <!-- Location (Full Width) -->
+          <div class="form-group">
+            <label>Location</label>
+            <div ref="mapContainer" class="map-container"></div>
+            <small class="form-text text-muted">
+              <i class="fa fa-map-marker"></i> Click on the map or drag the
+              marker to select location. <strong>Selected:</strong>
+              {{ selectedLocation.lat.toFixed(6) }},
+              {{ selectedLocation.lng.toFixed(6) }}
+            </small>
           </div>
         </div>
       </div>
@@ -740,8 +803,22 @@
     color: #8b5cf6;
   }
 
+  /* Map Styling */
+  .map-container {
+    height: 400px;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
   /* Responsive */
   @media (max-width: 768px) {
+    .map-container {
+      height: 300px;
+    }
+
     .profile-header h1 {
       font-size: 1.5rem;
     }
@@ -774,6 +851,12 @@
 
     .btn {
       flex: 1;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .map-container {
+      height: 250px;
     }
   }
 </style>

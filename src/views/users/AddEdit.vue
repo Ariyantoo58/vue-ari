@@ -1,5 +1,5 @@
 <script setup>
-  import { onMounted, ref, watch } from 'vue';
+  import { ref, watch } from 'vue';
   import { Form, Field } from 'vee-validate';
   import * as Yup from 'yup';
   import { useRoute } from 'vue-router';
@@ -39,7 +39,6 @@
   const schema = Yup.object({
     profile: Yup.mixed()
       .test('fileType', 'Only image files are allowed', (value) => {
-        console.log(value, 'valueFile');
         if (!value) return true; // no new file → OK
         if (typeof value === 'string') return true; // base64 from edit → OK
         return ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'].includes(
@@ -58,13 +57,12 @@
       .min(6, 'Password must be at least 6 characters'),
   });
 
-  // Handle file selection
+  // Handle file selectionmapContainer
   function handleFileChange(event, setFieldValue) {
     const file = event.target.files[0];
     if (file) {
       profileFile.value = file;
       setFieldValue('profile', file); // save FILE
-      console.log(profileFile, 'profilefILE');
       const reader = new FileReader();
       reader.onload = (e) => {
         profilePreview.value = e.target.result; // BASE64
@@ -99,6 +97,8 @@
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map.value);
+
+      console.log(selectedLocation, 'selectedLocation');
 
       marker.value = L.marker(
         [selectedLocation.value.lat, selectedLocation.value.lng],
@@ -181,7 +181,7 @@
     <Form
       @submit="onSubmit"
       :validation-schema="schema"
-      :initial-values="{ ...user, profile: null }"
+      :initial-values="{ ...user }"
       v-slot="{ errors, isSubmitting, setFieldValue }"
     >
       <!-- Profile Upload Section with Modern Design -->
@@ -366,7 +366,7 @@
   </template>
   <template v-if="user?.error">
     <div class="text-center m-5">
-      <div class="text-danger">Error loading user: {{ user.error }}</div>
+      <div class="text-danger">User not found</div>
     </div>
   </template>
 </template>

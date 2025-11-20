@@ -44,7 +44,7 @@
           <th style="width: 30%">Name</th>
           <th style="width: 30%">Phone</th>
           <th style="width: 30%">email</th>
-          <th style="width: 10%"></th>
+          <th style="width: 10%">Action</th>
         </tr>
       </thead>
       <tbody>
